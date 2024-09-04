@@ -181,6 +181,25 @@ app.post('/delete-event', checkAuthenticated, (req, res) => {
     });
 });
 
+// Rota para atualizar evento (apenas para usuários autenticados)
+app.post('/update-event', checkAuthenticated, (req, res) => {
+    const { id, title, description, date, start_time, end_time, all_day } = req.body;
+    const userId = req.session.userId;
+
+    // Verificar se o evento pertence ao usuário logado e atualizar o evento
+    db.run(`UPDATE events SET title = ?, description = ?, date = ?, start_time = ?, end_time = ?, all_day = ? WHERE id = ? AND user_id = ?`,
+        [title, description, date, start_time, end_time, all_day, id, userId], function (err) {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            if (this.changes > 0) {
+                res.json({ message: 'Evento atualizado com sucesso!' });
+            } else {
+                res.status(404).json({ error: 'Evento não encontrado ou você não tem permissão para atualizá-lo.' });
+            }
+        });
+});
+
 // Iniciando o servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
