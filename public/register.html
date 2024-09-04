@@ -117,6 +117,27 @@
                 alert('Erro no registro: ' + err.responseText);
             });
         });
+        // Excluir evento
+        $('#deleteEvent').on('click', function () {
+            var eventId = $('#eventDetailsModal').data('event-id');
+            $.ajax({
+                url: '/delete-event',
+                method: 'POST',
+                data: { id: eventId },
+                success: function (response) {
+                    var event = calendar.getEventById(eventId);
+                    if (event) {
+                        event.remove();
+                    }
+                    $('#eventDetailsModal').modal('hide');
+                    alert(response.message);
+                },
+                error: function (response) {
+                    alert('Erro ao excluir o evento: ' + response.responseJSON.error);
+                }
+            });
+        });
+
     </script>
 </body>
 

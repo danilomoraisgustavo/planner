@@ -163,6 +163,23 @@ app.get('/get-username', checkAuthenticated, (req, res) => {
     });
 });
 
+// Rota para deletar evento (apenas para usuários autenticados)
+app.post('/delete-event', checkAuthenticated, (req, res) => {
+    const { id } = req.body;
+    const userId = req.session.userId;
+
+    // Certifique-se de que o evento pertence ao usuário logado
+    db.run(`DELETE FROM events WHERE id = ? AND user_id = ?`, [id, userId], function (err) {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        if (this.changes > 0) {
+            res.json({ message: 'Evento excluído com sucesso!' });
+        } else {
+            res.status(404).json({ error: 'Evento não encontrado ou você não tem permissão para excluí-lo.' });
+        }
+    });
+});
 
 // Iniciando o servidor
 const PORT = process.env.PORT || 3000;
