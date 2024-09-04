@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="pt-br">
+
+<head>
+  <!-- Meta tags obrigatórias -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link href="https://fonts.googleapis.com/css?family=Roboto:300,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css?family=Poppins:300,400,500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="fonts/icomoon/style.css">
+
+  <link href='fullcalendar/packages/core/main.css' rel='stylesheet' />
+  <link href='fullcalendar/packages/daygrid/main.css' rel='stylesheet' />
+  <link href='fullcalendar/packages/timegrid/main.css' rel='stylesheet' />
+
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="css/bootstrap.min.css">
+
+  <!-- Style -->
+  <link rel="stylesheet" href="css/style.css">
+
+  <title>Planner Calendário</title>
+
+  <!-- Estilo adicional para o dia atual -->
+  <style>
+    .fc-day-today {
+      background-color: transparent !important;
+      color: red !important;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="logo">
+      <img src="images/logo.png" alt="Logo" style="height: 30px; margin-right: 10px;">
+      Planner
+    </div>
+    <div class="dropdown">
+      <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown"
+        aria-haspopup="true" aria-expanded="false">
+        <i class="fa fa-user"></i> <span id="username">Usuário</span>
+      </button>
+      <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuButton">
+        <a class="dropdown-item" href="#" id="logout">Sair</a>
+      </div>
+    </div>
+  </div>
+
+
+  <div id='calendar-container'>
+    <div id='calendar'></div>
+  </div>
+
+  <!-- Modal para adicionar evento -->
+  <div class="modal fade" id="eventModal" tabindex="-1" role="dialog" aria-labelledby="eventModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="eventModalLabel">Adicionar Evento</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="eventForm">
+            <input type="hidden" id="eventId">
+            <div class="form-group">
+              <label for="eventTitle">Título do Evento</label>
+              <input type="text" class="form-control" id="eventTitle" required>
+            </div>
+            <div class="form-group">
+              <label for="eventDescription">Descrição</label>
+              <textarea class="form-control" id="eventDescription" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="eventDate">Data do Evento</label>
+              <input type="text" class="form-control" id="eventDate" readonly>
+            </div>
+            <div class="form-group form-check">
+              <!-- Caixa de seleção desmarcada por padrão -->
+              <input type="checkbox" class="form-check-input" id="allDayCheck">
+              <label class="form-check-label" for="allDayCheck">Evento de dia inteiro</label>
+            </div>
+            <div id="timeFields" class="form-group">
+              <label for="eventStartTime">Hora de Início</label>
+              <input type="time" class="form-control" id="eventStartTime">
+              <label for="eventEndTime">Hora de Término</label>
+              <input type="time" class="form-control" id="eventEndTime">
+            </div>
+            <button type="submit" class="btn btn-primary">Salvar Evento</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para exibir detalhes do evento -->
+  <div class="modal fade" id="eventDetailsModal" tabindex="-1" role="dialog" aria-labelledby="eventDetailsModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="eventDetailsModalLabel">Detalhes do Evento</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <h5 id="eventDetailsTitle"></h5>
+          <p id="eventDetailsDescription"></p>
+          <button id="editEvent" class="btn btn-secondary">Editar</button>
+          <button id="deleteEvent" class="btn btn-danger">Excluir</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/jquery-3.3.1.min.js"></script>
+  <script src="js/popper.min.js"></script>
+  <script src="js/bootstrap.min.js"></script>
+
+  <script src='fullcalendar/packages/core/main.js'></script>
+  <script src='fullcalendar/packages/interaction/main.js'></script>
+  <script src='fullcalendar/packages/daygrid/main.js'></script>
+  <script src='fullcalendar/packages/timegrid/main.js'></script>
+  <script src='fullcalendar/packages/list/main.js'></script>
+  <script src='fullcalendar/packages/core/locales/pt-br.js'></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Buscar o nome do usuário autenticado
+      $.get('/get-username', function (response) {
+        $('#username').text(response.username); // Atualiza o nome do usuário no dropdown
+      });
+
+      var calendarEl = document.getElementById('calendar');
+
+      var calendar = new FullCalendar.Calendar(calendarEl, {
+        locale: 'pt-br',
+        plugins: ['interaction', 'dayGrid', 'timeGrid', 'list'],
+        height: 'parent',
+        header: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+        },
+        initialView: 'dayGridMonth',
+        navLinks: true,
+        editable: true,
+        eventLimit: true,
+        dateClick: function (info) {
+          $('#eventDate').val(info.dateStr);
+          $('#eventModal').modal('show');
+        },
+        eventClick: function (info) {
+          $('#eventDetailsTitle').text(info.event.title);
+          $('#eventDetailsDescription').text(info.event.extendedProps.description);
+          $('#eventDetailsModal').data('event-id', info.event.id).modal('show');
+        },
+        events: '/get-events'
+      });
+
+      calendar.render();
+
+      // Controla a exibição dos campos de horário com base na seleção de "Dia Inteiro"
+      $('#allDayCheck').change(function () {
+        if (this.checked) {
+          $('#timeFields').hide();
+        } else {
+          $('#timeFields').show();
+        }
+      });
+
+      // Adicionar ou editar evento
+      $('#eventForm').on('submit', function (e) {
+        e.preventDefault();
+        var id = $('#eventId').val();
+        var title = $('#eventTitle').val();
+        var description = $('#eventDescription').val();
+        var date = $('#eventDate').val();
+        var allDay = $('#allDayCheck').is(':checked');
+        var startTime = allDay ? null : $('#eventStartTime').val();
+        var endTime = allDay ? null : $('#eventEndTime').val();
+        var data = { title: title, description: description, date: date, start_time: startTime, end_time: endTime, all_day: allDay ? 1 : 0 };
+
+        if (id) { // Se há um ID, atualiza o evento
+          data.id = id;
+          $.ajax({
+            url: '/update-event',
+            method: 'POST',
+            data: data,
+            success: function (response) {
+              var event = calendar.getEventById(id);
+              event.setProp('title', title);
+              event.setExtendedProp('description', description);
+              event.setDates(allDay ? date : date + 'T' + startTime, allDay ? null : date + 'T' + endTime);
+              event.setAllDay(allDay);
+              $('#eventModal').modal('hide');
+              $('#eventForm')[0].reset();
+            }
+          });
+        } else { // Senão, adiciona um novo evento
+          $.ajax({
+            url: '/add-event',
+            method: 'POST',
+            data: data,
+            success: function (response) {
+              calendar.addEvent({
+                id: response.id,
+                title: title,
+                start: allDay ? date : date + 'T' + startTime,
+                end: allDay ? null : date + 'T' + endTime,
+                description: description,
+                allDay: allDay
+              });
+              $('#eventModal').modal('hide');
+              $('#eventForm')[0].reset();
+            }
+          });
+        }
+      });
+
+      // Editar evento
+      $('#editEvent').on('click', function () {
+        var eventId = $('#eventDetailsModal').data('event-id');
+        var event = calendar.getEventById(eventId);
+        $('#eventId').val(event.id);
+        $('#eventTitle').val(event.title);
+        $('#eventDescription').val(event.extendedProps.description);
+        $('#eventDate').val(event.start.toISOString().slice(0, 10));
+        $('#allDayCheck').prop('checked', event.allDay);
+        if (!event.allDay) {
+          $('#eventStartTime').val(event.start.toISOString().slice(11, 16));
+          $('#eventEndTime').val(event.end ? event.end.toISOString().slice(11, 16) : '');
+          $('#timeFields').show();
+        } else {
+          $('#timeFields').hide();
+        }
+        $('#eventDetailsModal').modal('hide');
+        $('#eventModal').modal('show');
+      });
+
+      // Excluir evento
+      $('#deleteEvent').on('click', function () {
+        var eventId = $('#eventDetailsModal').data('event-id');
+        $.ajax({
+          url: '/delete-event',
+          method: 'POST',
+          data: { id: eventId },
+          success: function (response) {
+            var event = calendar.getEventById(eventId);
+            event.remove();
+            $('#eventDetailsModal').modal('hide');
+          }
+        });
+      });
+
+      // Logout
+      $('#logout').on('click', function () {
+        $.post('/logout', function () {
+          window.location.href = '/';
+        });
+      });
+    });
+  </script>
+
+  <script src="js/main.js"></script>
+</body>
+
+</html>
